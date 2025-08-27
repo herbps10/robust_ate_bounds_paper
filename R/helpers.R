@@ -27,23 +27,29 @@ ci <- function(estimate, eif, N, alpha = 0.05) {
   estimate + qnorm(c(alpha / 2, 1 - alpha / 2)) * sd(eif) / sqrt(N)
 }
 
-multiplier_bootstrap <- function(onestep, eif, draws = 1e3, alpha = 0.05) {
-  N <- nrow(eif)
-  K <- ncol(eif)
+multiplier_bootstrap <- function(lower, upper, eif_lower, eif_upper, draws = 1e3, alpha = 0.05) {
+  N <- nrow(eif_lower)
+  K <- ncol(eif_lower)
 
-  se <- apply(eif, 2, sd)   |> matrix(ncol = K, nrow = N, byrow = TRUE)
-  #mu <- apply(eif, 2, mean) |> matrix(ncol = K, nrow = N, byrow = TRUE)
-  eif2 <- eif / se
+  se_lower <- apply(eif_lower, 2, sd) |> matrix(ncol = K, nrow = N, byrow = TRUE)
+  se_upper <- apply(eif_upper, 2, sd) |> matrix(ncol = K, nrow = N, byrow = TRUE)
+  eif_lower_scaled <- eif_lower / se_lower
+  eif_upper_scaled <- eif_upper / se_upper
 
   zs <- matrix(2 * rbinom(draws * N, 1, 0.5) - 1, nrow = N, ncol = draws)
-  #zs <- matrix(rnorm(draws * N), nrow = N, ncol = draws)
   
-  x <- map_dbl(1:draws, \(draw) max(apply(zs[, draw] * eif2, 2, \(x) abs(sum(x) / sqrt(N))), na.rm = T))
-  calpha <- quantile(x, 1 - alpha)
+  T_lower <- map(1:draws, \(draw) colSums(zs[, draw] * eif_lower_scaled) / sqrt(N))
+  T_upper <- map(1:draws, \(draw) colSums(zs[, draw] * eif_upper_scaled) / sqrt(N))
+  
+  T_max <- map(1:draws, \(draw) pmax(T_lower[[draw]], -T_upper[[draw]]))
+  
+  max_max <- map_dbl(T_max, max, na.rm = TRUE)
+  
+  calpha <- quantile(max_max, 1 - alpha)
   print(calpha)
 
   matrix(c(
-    onestep - calpha * apply(eif, 2, sd) / sqrt(N), 
-    onestep + calpha * apply(eif, 2, sd) / sqrt(N)
+    lower - calpha * apply(eif_lower, 2, sd) / sqrt(N), 
+    upper + calpha * apply(eif_upper, 2, sd) / sqrt(N)
   ), ncol = 2, nrow = K, byrow = FALSE)
 }

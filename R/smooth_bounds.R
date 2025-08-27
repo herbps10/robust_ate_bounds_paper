@@ -166,15 +166,14 @@ smooth_bounds <- function(data, X, A, Y, learners_trt = c("glm"), learners_outco
   # Multiplier bootstrap
   lower_uniform_ci <- upper_uniform_ci <- matrix(NA, K, 2)
   if(bootstrap == TRUE) {
-    lower_uniform_ci <- multiplier_bootstrap(lower, lower_eif, draws = bootstrap_draws)
-    upper_uniform_ci <- multiplier_bootstrap(upper, upper_eif, draws = bootstrap_draws)
+    uniform_ci <- multiplier_bootstrap(lower, upper, lower_eif, upper_eif, draws = bootstrap_draws)
   }
   
   res <- list(
     lower = lower_ci[, 1],
     upper = upper_ci[, 2],
-    lower_uniform = lower_uniform_ci[, 1],
-    upper_uniform = upper_uniform_ci[, 2],
+    lower_uniform = uniform_ci[, 1],
+    upper_uniform = uniform_ci[, 2],
     thresholds = thresholds,
     nuisance = list(
       pi_hat = pi_hat,
