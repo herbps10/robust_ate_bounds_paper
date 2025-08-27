@@ -29,13 +29,21 @@ ci <- function(estimate, eif, N, alpha = 0.05) {
 
 multiplier_bootstrap <- function(onestep, eif, draws = 1e3, alpha = 0.05) {
   N <- nrow(eif)
-  se <- apply(eif, 2, sd) |> matrix(ncol = ncol(eif), nrow = N, byrow = TRUE)
-  mu <- apply(eif, 2, mean) |> matrix(ncol = ncol(eif), nrow = nrow(eif), byrow = TRUE)
-  eif2 <- (eif - mu) / se
+  K <- ncol(eif)
+
+  se <- apply(eif, 2, sd)   |> matrix(ncol = K, nrow = N, byrow = TRUE)
+  #mu <- apply(eif, 2, mean) |> matrix(ncol = K, nrow = N, byrow = TRUE)
+  eif2 <- eif / se
+
   zs <- matrix(2 * rbinom(draws * N, 1, 0.5) - 1, nrow = N, ncol = draws)
+  #zs <- matrix(rnorm(draws * N), nrow = N, ncol = draws)
   
   x <- map_dbl(1:draws, \(draw) max(apply(zs[, draw] * eif2, 2, \(x) abs(sum(x) / sqrt(N))), na.rm = T))
   calpha <- quantile(x, 1 - alpha)
-  
-  matrix(c(onestep - calpha * apply(eif, 2, sd) / sqrt(N), onestep + calpha * apply(eif, 2, sd) / sqrt(N)), ncol = 2, nrow = ncol(eif), byrow = FALSE)
+  print(calpha)
+
+  matrix(c(
+    onestep - calpha * apply(eif, 2, sd) / sqrt(N), 
+    onestep + calpha * apply(eif, 2, sd) / sqrt(N)
+  ), ncol = 2, nrow = K, byrow = FALSE)
 }
