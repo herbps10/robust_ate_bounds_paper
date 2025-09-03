@@ -1,4 +1,4 @@
-tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "trimmed", maxiter = 25) {
+tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "trimmed", maxiter = 25, verbose = FALSE) {
   fluctuation <- \(epsilon, mu0, mu1, pi) {
     cleverA <- rep(0, length(pi))
     if(smoothness > 0) {
@@ -43,7 +43,7 @@ tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "
     mu1_star <- f$mu1
     pi_star  <- f$pi
     
-    cat(glue::glue("Iter: {iter} epsilon_star: {epsilon_star} smoothness: {smoothness} threshold: {threshold} bounds: ({left_bound}, {right_bound}) \n\n"))
+    if(verbose) cat(glue::glue("Iter: {iter} epsilon_star: {epsilon_star} smoothness: {smoothness} threshold: {threshold} bounds: ({left_bound}, {right_bound}) \n\n"))
     
     if(abs(epsilon_star) > 0.5) browser()
     
