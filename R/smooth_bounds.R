@@ -142,9 +142,9 @@ smooth_bounds <- function(data, X, A, Y, learners_trt = c("glm"), learners_outco
     for(index in seq_along(thresholds)) {
       threshold <- thresholds[index]
       
-      tmle_lower   <- tmle_smooth(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "lower")
-      tmle_upper   <- tmle_smooth(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "upper")
-      tmle_trimmed <- tmle_smooth(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "trimmed")
+      tmle_lower   <- tmle_smooth(data[[A]], data[[Y]], mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "lower")
+      tmle_upper   <- tmle_smooth(data[[A]], data[[Y]], mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "upper")
+      tmle_trimmed <- tmle_smooth(data[[A]], data[[Y]], mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "trimmed")
       
       trimmed[index] <- tmle_trimmed$psi
       lower[index]   <- tmle_lower$psi
