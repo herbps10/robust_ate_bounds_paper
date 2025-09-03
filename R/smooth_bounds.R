@@ -1,8 +1,11 @@
-tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "trimmed", maxiter = 1e2) {
+tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "trimmed", maxiter = 25) {
   fluctuation <- \(epsilon, mu0, mu1, pi) {
-    cleverA <- (mu1 * s_gt_dot(pi, threshold, smoothness) - mu0 * s_lt_dot(pi, 1 - threshold, smoothness))
-    if(parameter == "lower") cleverA <- cleverA + s_lt_dot(pi, 1 - threshold, smoothness)
-    if(parameter == "upper") cleverA <- cleverA - s_gt_dot(pi, threshold, smoothness)
+    cleverA <- rep(0, length(pi))
+    if(smoothness > 0) {
+      cleverA <- (mu1 * s_gt_dot(pi, threshold, smoothness) - mu0 * s_lt_dot(pi, 1 - threshold, smoothness))
+      if(parameter == "lower") cleverA <- cleverA + s_lt_dot(pi, 1 - threshold, smoothness)
+      if(parameter == "upper") cleverA <- cleverA - s_gt_dot(pi, threshold, smoothness)
+    }
     
     list(
       mu0 = plogis(qlogis(mu0) - epsilon / (1 - pi) * s_lt(pi, 1 - threshold, smoothness)),
@@ -13,26 +16,55 @@ tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "
   
   loss <- \(params, mu0, mu1, pi) {
     f <- fluctuation(params, mu0, mu1, pi) 
-    mean(
+    x <- mean(
       -A * log(f$pi) - (1 - A) * log(1 - f$pi) + ifelse(A == 1, -Y * log(f$mu1) - (1 - Y) * log(1 - f$mu1), -Y * log(f$mu0) - (1 - Y) * log(1 - f$mu0))
     )
+    if(is.infinite(x) || is.nan(x)) return(Inf)
+    x
   }
   
   # Start at initial estimators
   mu0_star <- mu0
   mu1_star <- mu1
   pi_star  <- pi
+  converged <- FALSE
   for(iter in 1:maxiter) {
-    epsilon_star <- optimize(loss, interval = c(-1, 1), mu0 = mu0_star, mu1 = mu1_star, pi = pi_star)$minimum
+    # evaluate loss at bounds
+    left_bound <- c(-0.1)
+    right_bound <- 0.1
+    if(is.infinite(loss(0, mu0_star, mu1_star, pi_star))) stop("Infinite loss at zero fluctuation")
+    while(is.infinite(loss(left_bound, mu0_star, mu1_star, pi_star))) left_bound <- left_bound / 2
+    while(is.infinite(loss(right_bound, mu0_star, mu1_star, pi_star))) right_bound <- right_bound / 2
+    
+    epsilon_star <- optimize(loss, interval = c(left_bound, right_bound), mu0 = mu0_star, mu1 = mu1_star, pi = pi_star)$minimum
     f <- fluctuation(epsilon_star, mu0_star, mu1_star, pi_star)
     
     mu0_star <- f$mu0
     mu1_star <- f$mu1
     pi_star  <- f$pi
     
-    if(abs(epsilon_star) < 1e-2) break
+    cat(glue::glue("Iter: {iter} epsilon_star: {epsilon_star} smoothness: {smoothness} threshold: {threshold} bounds: ({left_bound}, {right_bound}) \n\n"))
+    
+    if(abs(epsilon_star) > 0.5) browser()
+    
+    if(abs(epsilon_star) < 1e-2) {
+      converged <- TRUE
+      break
+    }
   }
   psi_trimmed <- mean(mu1_star * s_gt(pi_star, threshold, smoothness) - mu0_star * s_lt(pi_star, 1 - threshold, smoothness))
+  
+  if(converged == FALSE) {
+    warning("Failed to converge")
+    return(list(
+      psi = NA,
+      eif = NA,
+      mu0 = NA,
+      mu1 = NA,
+      pi = NA,
+      ci = NA
+    ))
+  }
   
   if(parameter == "trimmed") {
     psi <- psi_trimmed
@@ -50,9 +82,9 @@ tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "
   list(
     psi = psi,
     eif = eif,
-    mu0 = mu0,
-    mu1 = mu1,
-    pi = pi,
+    mu0 = mu0_star,
+    mu1 = mu1_star,
+    pi = pi_star,
     ci = psi + qnorm(c(0.025, 0.975)) * sd(eif) / sqrt(length(Y))
   )
 }

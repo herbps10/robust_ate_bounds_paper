@@ -6,16 +6,13 @@ s_gt_dot <- function(x, t, gamma) {
     2 * gamma^2 * exp(1 / ((t - x)^2 / gamma^2 - 1) + 1) * (x - t) / (gamma^2 - (t - x)^2)^2))
 }
 
-s_gte <- function(x, t, gamma) ifelse(x - t <= -gamma, 0, ifelse(x - t >= 0, 1, 1 - exp(1 / (((x - t + gamma) / gamma)^2 - 1))/ exp(-1)))
-s_gte_dot <- function(x, t, gamma) {
-  ifelse(x - t <= 0, 0, ifelse(x - t >= 0 + gamma, 0, 
-    2 * gamma^2 * exp(1 / ((t - x + gamma)^2 / gamma^2 - 1) + 1) * (x - t) / (gamma^2 - (t - x)^2)^2))
-}
-
 # Approximate I[x < t] as gamma -> 0
 # Note that s(x) <= I[x < t]
-s_lt <- function(x, t, gamma) 1 - s_gte(x, t, gamma) 
-s_lt_dot <- function(x, t, gamma) -s_gte_dot(x, t, gamma)
+s_lt <- function(x, t, gamma) ifelse(x <= t - gamma, 1, ifelse(x >= t, 0,  1 - exp(1 / (((x - t) / gamma)^2 - 1))/ exp(-1)))
+s_lt_dot <- function(x, t, gamma) {
+  ifelse(x <= t - gamma, 0, ifelse(x >= t, 0, 
+                               2 * gamma^2 * exp(1 / ((t - x)^2 / gamma^2 - 1) + 1) * (x - t) / (gamma^2 - (t - x)^2)^2))
+}
 
 #' Compute one-step estimtaor
 #' 
