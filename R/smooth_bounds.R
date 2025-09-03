@@ -57,7 +57,7 @@ tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "
   )
 }
 
-smooth_bounds <- function(data, X, A, Y, learners_trt = c("glm"), learners_outcome = c("glm"), method = "tmle", folds = 5, thresholds = c(0, 10^seq(-4, 0, 0.05)), smoothness = 0, bootstrap = TRUE, bootstrap_draws = 1e3, nuisances = NULL) {
+smooth_bounds <- function(data, X, A, Y, learners_trt = c("glm"), learners_outcome = c("glm"), method = "tmle", folds = 5, thresholds = c(0, 10^seq(-4, 0, 0.05)), smoothness = 0, bootstrap = TRUE, bootstrap_draws = 1e3, nuisance = NULL) {
   method <- str_to_lower(method)
   if(!(method %in% c("tmle", "onestep"))) stop("Method must be 'tmle' or 'onestep'")
   if(!all(X %in% names(data))) stop("All X columns must be in input data")
@@ -69,11 +69,11 @@ smooth_bounds <- function(data, X, A, Y, learners_trt = c("glm"), learners_outco
   N <- nrow(data)
   
   # Cross-fitted nuisance models
-  if(!is.null(nuisances)) {
-    pi_hat <- nuisances$pi_hat
-    mu0_hat <- nuisances$mu0_hat
-    mu1_hat <- nuisances$mu1_hat
-    mu_hat <- nuisances$mu_hat
+  if(!is.null(nuisance)) {
+    pi_hat <- nuisance$pi_hat
+    mu0_hat <- nuisance$mu0_hat
+    mu1_hat <- nuisance$mu1_hat
+    mu_hat <- nuisance$mu_hat
   }
   else {
     data0 <- data1 <- data
@@ -105,75 +105,83 @@ smooth_bounds <- function(data, X, A, Y, learners_trt = c("glm"), learners_outco
     mu_hat <- ifelse(data[[A]] == 1, mu1_hat, mu0_hat)
   }
 
-  # Set up output
-  trimmed <- lower <- upper <- numeric(K)
-  trimmed_ci <- lower_ci <- upper_ci <- matrix(ncol = 2, nrow = K)
-  trimmed_eif <- lower_eif <- upper_eif <- matrix(nrow = N, ncol = K)
-  
-  #
-  # Plugin and one-step estimators
-  #
-  if(method == "onestep") {
-    for(index in seq_along(thresholds)) {
-      threshold <- thresholds[index]
-      
-      trimmed_plugin <- mean(mu1_hat * s_gt(pi_hat, threshold, smoothness) - mu0_hat * s_lt(pi_hat, 1 - threshold, smoothness))
-      lower_plugin <- trimmed_plugin - mean(1 - s_lt(pi_hat, 1 - threshold, smoothness))
-      upper_plugin <- trimmed_plugin + mean(1 - s_gt(pi_hat, threshold, smoothness))
-      
-      trimmed_eif[, index] <- eif_trimmed(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness)
-      lower_eif[, index]   <- eif_lower(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness)
-      upper_eif[, index]   <- eif_upper(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness)
-      
-      trimmed[index] <- onestep(trimmed_plugin, trimmed_eif[, index])
-      lower[index]   <- onestep(lower_plugin, lower_eif[, index])
-      upper[index]   <- onestep(upper_plugin, upper_eif[, index])
-      
-      trimmed_ci[index, ]    <- ci(trimmed[index], trimmed_eif[, index], N)
-      lower_ci[index, ]      <- ci(lower[index], lower_eif[, index], N)
-      upper_ci[index, ]      <- ci(upper[index], upper_eif[, index], N)
+  results <- lapply(smoothness, \(smoothness) {
+    # Set up output
+    trimmed <- lower <- upper <- numeric(K)
+    trimmed_ci <- lower_ci <- upper_ci <- matrix(ncol = 2, nrow = K)
+    trimmed_eif <- lower_eif <- upper_eif <- matrix(nrow = N, ncol = K)
+    
+    #
+    # Plugin and one-step estimators
+    #
+    if(method == "onestep") {
+      for(index in seq_along(thresholds)) {
+        threshold <- thresholds[index]
+        
+        trimmed_plugin <- mean(mu1_hat * s_gt(pi_hat, threshold, smoothness) - mu0_hat * s_lt(pi_hat, 1 - threshold, smoothness))
+        lower_plugin <- trimmed_plugin - mean(1 - s_lt(pi_hat, 1 - threshold, smoothness))
+        upper_plugin <- trimmed_plugin + mean(1 - s_gt(pi_hat, threshold, smoothness))
+        
+        trimmed_eif[, index] <- eif_trimmed(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness)
+        lower_eif[, index]   <- eif_lower(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness)
+        upper_eif[, index]   <- eif_upper(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness)
+        
+        trimmed[index] <- onestep(trimmed_plugin, trimmed_eif[, index])
+        lower[index]   <- onestep(lower_plugin, lower_eif[, index])
+        upper[index]   <- onestep(upper_plugin, upper_eif[, index])
+        
+        trimmed_ci[index, ]    <- ci(trimmed[index], trimmed_eif[, index], N)
+        lower_ci[index, ]      <- ci(lower[index], lower_eif[, index], N)
+        upper_ci[index, ]      <- ci(upper[index], upper_eif[, index], N)
+      }
     }
-  }
-  
-  #
-  # TMLE
-  #
-  else if(method == "tmle") {
-    for(index in seq_along(thresholds)) {
-      threshold <- thresholds[index]
-      
-      tmle_lower   <- tmle_smooth(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "lower")
-      tmle_upper   <- tmle_smooth(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "upper")
-      tmle_trimmed <- tmle_smooth(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "trimmed")
-      
-      trimmed[index] <- tmle_trimmed$psi
-      lower[index]   <- tmle_lower$psi
-      upper[index]   <- tmle_upper$psi
-      
-      trimmed_eif[, index] <- tmle_trimmed$eif
-      lower_eif[, index]   <- tmle_lower$eif
-      upper_eif[, index]   <- tmle_upper$eif
-      
-      trimmed_ci[index, 1] <- tmle_trimmed$ci[1]
-      trimmed_ci[index, 2] <- tmle_trimmed$ci[2]
-      lower_ci[index, 1]   <- tmle_lower$ci[1]
-      lower_ci[index, 2]   <- tmle_lower$ci[2]
-      upper_ci[index, 1]   <- tmle_upper$ci[1]
-      upper_ci[index, 2]   <- tmle_upper$ci[2]
-    } 
-  }
-  
-  # Multiplier bootstrap
-  lower_uniform_ci <- upper_uniform_ci <- matrix(NA, K, 2)
-  if(bootstrap == TRUE) {
-    uniform_ci <- multiplier_bootstrap(lower, upper, lower_eif, upper_eif, draws = bootstrap_draws)
-  }
-  
-  res <- list(
-    lower = lower_ci[, 1],
-    upper = upper_ci[, 2],
-    lower_uniform = uniform_ci[, 1],
-    upper_uniform = uniform_ci[, 2],
+    
+    #
+    # TMLE
+    #
+    else if(method == "tmle") {
+      for(index in seq_along(thresholds)) {
+        threshold <- thresholds[index]
+        
+        tmle_lower   <- tmle_smooth(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "lower")
+        tmle_upper   <- tmle_smooth(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "upper")
+        tmle_trimmed <- tmle_smooth(data$A, data$Y, mu0_hat, mu1_hat, pi_hat, threshold, smoothness, parameter = "trimmed")
+        
+        trimmed[index] <- tmle_trimmed$psi
+        lower[index]   <- tmle_lower$psi
+        upper[index]   <- tmle_upper$psi
+        
+        trimmed_eif[, index] <- tmle_trimmed$eif
+        lower_eif[, index]   <- tmle_lower$eif
+        upper_eif[, index]   <- tmle_upper$eif
+        
+        trimmed_ci[index, 1] <- tmle_trimmed$ci[1]
+        trimmed_ci[index, 2] <- tmle_trimmed$ci[2]
+        lower_ci[index, 1]   <- tmle_lower$ci[1]
+        lower_ci[index, 2]   <- tmle_lower$ci[2]
+        upper_ci[index, 1]   <- tmle_upper$ci[1]
+        upper_ci[index, 2]   <- tmle_upper$ci[2]
+      } 
+    }
+    
+    # Multiplier bootstrap
+    uniform_ci <- matrix(NA, K, 2)
+    if(bootstrap == TRUE) {
+      uniform_ci <- multiplier_bootstrap(lower, upper, lower_eif, upper_eif, draws = bootstrap_draws)
+    }
+    
+    list(
+      lower = lower_ci[, 1],
+      upper = upper_ci[, 2],
+      lower_uniform = uniform_ci[, 1],
+      upper_uniform = uniform_ci[, 2],
+      thresholds = thresholds
+    )
+  })
+
+  list(
+    bounds = results,
+    smoothness = smoothness,
     thresholds = thresholds,
     nuisance = list(
       pi_hat = pi_hat,
@@ -182,6 +190,4 @@ smooth_bounds <- function(data, X, A, Y, learners_trt = c("glm"), learners_outco
       mu1_hat = mu1_hat
     )
   )
-  
-  res
 }
