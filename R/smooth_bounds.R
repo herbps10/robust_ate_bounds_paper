@@ -1,3 +1,53 @@
+ate_onestep <- function(A, Y, nuisance) {
+  pi_hat  <- nuisance$pi_hat
+  mu0_hat <- nuisance$mu0_hat
+  mu1_hat <- nuisance$mu1_hat
+  mu_hat <- ifelse(A == 1, mu1_hat, mu0_hat)
+
+  eif <- (A / pi_hat - (1 - A) / (1 - pi_hat)) * (Y - mu_hat) + mu1_hat - mu0_hat
+  ate <- mean(eif)
+  lower <- ate + qnorm(0.025) * sd(eif) / sqrt(length(Y))
+  upper <- ate + qnorm(0.975) * sd(eif) / sqrt(length(Y))
+  
+  list(
+    ate = ate,
+    lower = lower,
+    upper = upper,
+    test = upper < 0 || lower > 0
+  )
+}
+
+ate_tmle <- function(A, Y, nuisance) {
+  pi_hat  <- nuisance$pi_hat
+  mu0_hat <- nuisance$mu0_hat
+  mu1_hat <- nuisance$mu1_hat
+  mu_hat <- ifelse(A == 1, mu1_hat, mu0_hat)
+
+  H0 <- 1 / pi_hat
+  H1 <- -1 / (1 - pi_hat)
+  H <- ifelse(A == 1, H1, H0)
+
+  fit <- glm(Y ~ -1 + H + offset(qlogis(mu_hat)), family = "binomial")
+  epsilon <- coef(fit)[1]
+
+  mu0_star <- plogis(qlogis(mu0_hat) + epsilon * H0)
+  mu1_star <- plogis(qlogis(mu1_hat) + epsilon * H1)
+  mu_star <- ifelse(A == 1, mu1_star, mu0_star)
+
+  ate <- mean(mu1_hat - mu0_hat)
+  eif <- (A / pi_hat - (1 - A) / (1 - pi_hat)) * (Y - mu_star) + mu1_star - mu0_star
+  lower <- ate + qnorm(0.025) * sd(eif) / sqrt(length(Y))
+  upper <- ate + qnorm(0.975) * sd(eif) / sqrt(length(Y))
+
+  list(
+    ate = ate,
+    lower = lower,
+    upper = upper,
+    test = upper < 0 || lower > 0
+  )
+}
+
+
 tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "trimmed", maxiter = 25, verbose = FALSE) {
   fluctuation <- \(epsilon, mu0, mu1, pi) {
     cleverA <- rep(0, length(pi))
