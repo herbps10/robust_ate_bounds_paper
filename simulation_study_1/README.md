@@ -1,4 +1,4 @@
-# Simulation Study Template
+# Simulation Study
 This folder contains the simulation study replication materials. The simulation code is designed to be run on a SLURM parallel computing cluster.  The structure of the simulation study code is based on [this template](https://github.com/herbps10/simulation_study_template).
 
 The results reported in the paper are saved as `results/simulation_results.rds`.
