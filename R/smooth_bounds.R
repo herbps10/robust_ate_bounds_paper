@@ -102,8 +102,6 @@ tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "
       break
     }
   }
-  psi_trimmed <- mean(mu1_star * s_gt(pi_star, threshold, smoothness) - mu0_star * s_lt(pi_star, 1 - threshold, smoothness))
-  
   if(converged == FALSE) {
     warning("Failed to converge")
     return(list(
@@ -115,6 +113,8 @@ tmle_smooth <- function(A, Y, mu0, mu1, pi, threshold, smoothness, parameter = "
       ci = NA
     ))
   }
+  
+  psi_trimmed <- mean(mu1_star * s_gt(pi_star, threshold, smoothness) - mu0_star * s_lt(pi_star, 1 - threshold, smoothness))
   
   if(parameter == "trimmed") {
     psi <- psi_trimmed
