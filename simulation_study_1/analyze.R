@@ -9,62 +9,106 @@ source(glue::glue("{basepath}/../R/manuscript.R"))
 results_path <- Sys.getenv("SIMULATION_RESULTS_PATH")
 if(results_path == "") stop("Please set SIMULATION_RESULTS_PATH environment variable.")
 
-simulations <- read_rds(glue::glue("{results_path}/simulation_results.rds"))
+simulations <- read_rds(glue::glue("{results_path}/simulation_results.rds")) |>
+  filter(index > 1)
+
+q90 <- \(x) quantile(x, 0.90)
 
 results_summarized <- simulations |>
-  group_by(N, alpha, effect_size, smoothness) |>
+  filter(smoothness > 1e-4) |>
+  group_by(N, alpha, effect_size, smoothness, pscore_threshold) |>
   mutate(
-    width    = pmin(width, 2),
-    width_dr = pmin(width_dr, 2),
+    width_onestep = pmin(width_onestep, 2),
+    width_uniform = pmin(width_uniform, 2)
   ) |>
-  summarize(
-    mean_width_dr      = mean(width_dr), median_width_dr = median(width_dr),
-    mean_width         = mean(width), median_width = median(width),
-    mean_width_uniform = mean(width_uniform), median_width_uniform = median(width_uniform),
+  summarize_at(vars(width_onestep, width_uniform), list(mean = mean, median = median, max = max, sd = sd, q90 = q90))
 
-    shortest_threshold         = mean(shortest_threshold),
-    shortest_uniform_threshold = mean(shortest_uniform_threshold),
-    
-    coverage_dr   = mean(lower_dr <= true_ate & upper_dr >= true_ate),
-    coverage_uniform = mean(lower_uniform <= true_ate & upper_uniform >= true_ate),
-    coverage      = mean(lower <= true_ate & upper >= true_ate),
-    power_uniform = mean(uniform_test == TRUE),
-    power_dr      = mean(dr_test == TRUE),
-    power         = mean(test == TRUE),
-    n             = n()
-  ) |>
+results_summarized <- results_summarized |> left_join(
+  simulations |> 
+    group_by(N, alpha, effect_size, smoothness, pscore_threshold) |>
+    summarize(
+      onestep_coverage   = mean(lower_onestep <= true_ate & upper_onestep >= true_ate),
+      uniform_coverage   = mean(lower_uniform <= true_ate & upper_uniform >= true_ate),
+      uniform_power = mean(uniform_test == TRUE),
+      onestep_power = mean(test_onestep == TRUE),
+      power         = mean(test == TRUE),
+      n             = n()
+    ), 
+  by = c("N", "alpha", "effect_size", "smoothness", "pscore_threshold")) |>
   mutate(
-    width_diff = mean_width_dr - mean_width_uniform,
-    power_diff = power_dr - power_uniform
+    width_diff = width_onestep_mean - width_uniform_mean,
+    width_q90_diff = width_onestep_q90 - width_uniform_q90,
+    width_sd_diff = width_onestep_sd - width_uniform_sd,
+    power_diff = onestep_power - uniform_power,
+    miscoverage_diff = abs(0.95 - onestep_coverage) - abs(0.95 - uniform_coverage)
   ) |>
   arrange(N)
 
 width_comparison <- results_summarized |> 
-  select(mean_width_dr, mean_width_uniform, width_diff) |> 
-  arrange(width_diff)
+  group_by(N, alpha, effect_size, smoothness, pscore_threshold) |>
+  select(width_onestep_mean, width_uniform_mean, width_diff, width_onestep_q90, width_uniform_q90, width_q90_diff, width_onestep_sd, width_uniform_sd, width_sd_diff, n) |> 
+  arrange(width_diff) |>
+  ungroup()
 
 power_comparison <- results_summarized |>
-  select(power_dr, power_uniform, power_diff) |>
-  arrange(power_diff)
+  group_by(N, alpha, effect_size, smoothness, pscore_threshold) |>
+  select(onestep_power, uniform_power, power_diff) |>
+  arrange(power_diff) |>
+  ungroup()
+
+coverage_comparison <- results_summarized |>
+  group_by(N, alpha, effect_size, smoothness, pscore_threshold) |>
+  select(onestep_coverage, uniform_coverage, miscoverage_diff) |>
+  arrange(miscoverage_diff) |>
+  ungroup()
 
 table <- results_summarized |>
   ungroup() |>
-  select(effect_size, alpha, N, starts_with("mean_width"), starts_with("coverage"), starts_with("power")) |> 
-  select(-mean_width, -power, -coverage, -power_diff) |>
-  arrange(effect_size, alpha, N) |>
-  mutate_at(vars(starts_with("mean")), scales::number_format(accuracy = 0.001)) |>
-  mutate_at(vars(starts_with("power")), scales::number_format(accuracy = 0.01)) |>
-  mutate_at(vars(starts_with("coverage")), scales::percent_format(accuracy = 0.1)) |>
-  #mutate(power = ifelse(effect_size == 0, "", power)) |>
-  #mutate(power_dr = ifelse(effect_size == 0, "", power_dr)) |>
-  #mutate(power_uniform = ifelse(effect_size == 0, "", power_uniform)) |>
-  mutate_at(vars(effect_size, alpha), remove_dups)
+  select(smoothness, pscore_threshold, effect_size, alpha, N, ends_with("mean"), ends_with("median"), ends_with("q90"), ends_with("sd"), ends_with("coverage"), ends_with("power")) |> 
+  #filter(effect_size == 1, alpha %in% c(0, 3)) |>
+  arrange(pscore_threshold, effect_size, alpha, N) |>
+  mutate_at(vars(ends_with("mean")), scales::number_format(accuracy = 0.01)) |>
+  mutate_at(vars(ends_with("median")), scales::number_format(accuracy = 0.01)) |>
+  mutate_at(vars(ends_with("q90")), scales::number_format(accuracy = 0.01)) |>
+  mutate_at(vars(ends_with("sd")), scales::number_format(accuracy = 0.01)) |>
+  mutate_at(vars(ends_with("power")), scales::number_format(accuracy = 0.01)) |>
+  mutate_at(vars(ends_with("coverage")), scales::percent_format(accuracy = 0.1)) 
 
-table_latex <- table |>
-  select(effect_size, alpha, N, mean_width_dr, mean_width_uniform, coverage_dr, coverage_uniform, power_dr, power_uniform) |>
-  rowwise() |>
-  bold_best(mean_width_uniform, mean_width_dr, 0) |>
-  bold_best(coverage_uniform, coverage_dr, 95) |>
-  bold_best(power_uniform, power_dr, 1) |>
-  knitr::kable(format = "latex", escape = FALSE) |> 
-  kable_styling()
+make_width_table <- function(target_alpha = 5, target_pscore_threshold = Inf) {
+  table |>
+    filter(alpha == target_alpha, pscore_threshold == target_pscore_threshold) |>
+    arrange(N, smoothness) |>
+    select(N, smoothness, width_uniform_mean, width_onestep_mean, width_uniform_median, width_onestep_median, width_uniform_q90, width_onestep_q90, width_uniform_sd, width_onestep_sd ) |>
+    mutate_at(vars(N), remove_dups) |>
+    rowwise() |>
+    bold_best(width_uniform_mean, width_onestep_mean, 0) |>
+    bold_best(width_uniform_median, width_onestep_median, 0) |>
+    bold_best(width_uniform_q90, width_onestep_q90, 0) |>
+    bold_best(width_uniform_sd, width_onestep_sd, 0) |>
+    mutate(smoothness = case_when(
+      smoothness == 0.1 ~ "$10^{-1}$",
+      smoothness == 0.01 ~ "$10^{-2}$",
+      smoothness == 0.001 ~ "$10^{-3}$"
+    )) |>
+    knitr::kable(format = "latex", escape = FALSE) |> 
+    kable_styling()
+}
+
+make_coverage_table <- function(target_alpha = 5, target_pscore_threshold = Inf) {
+  table |>
+    filter(alpha == target_alpha, pscore_threshold == target_pscore_threshold) |>
+    arrange(N, smoothness) |>
+    select(N, smoothness, uniform_coverage, onestep_coverage, uniform_power, onestep_power) |>
+    mutate_at(vars(N), remove_dups) |>
+    rowwise() |>
+    bold_best(uniform_coverage, onestep_coverage, 95) |>
+    bold_best(uniform_power, onestep_power, 1) |>
+    mutate(smoothness = case_when(
+      smoothness == 0.1 ~ "$10^{-1}$",
+      smoothness == 0.01 ~ "$10^{-2}$",
+      smoothness == 0.001 ~ "$10^{-3}$"
+    )) |>
+
+    knitr::kable(format = "latex", escape = FALSE) |> 
+    kable_styling()
+}

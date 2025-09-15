@@ -1,6 +1,9 @@
 # Simulation Study Template
-This repository contains a simple template for a simulation study that can be run on a SLURM parallel computing cluster.
+This folder contains the simulation study replication materials. The simulation code is designed to be run on a SLURM parallel computing cluster.  The structure of the simulation study code is based on [this template](https://github.com/herbps10/simulation_study_template).
 
+The results reported in the paper are saved as `results/simulation_results.rds`.
+
+The main simulation files are:
 - `simstudy.R`: generates the simulation datasets and runs the statistical analysis on each one.
 - `wrapper.R`: implements the statistical analysis for each dataset.
 - `collect.R`: gathers the cached results from all the workers and combines them into one main results file.
@@ -25,26 +28,7 @@ Available commands:
   help      Show this help message
 ```
 
-## Git Subtree
-
-Setup:
+To rerun the simulation study, start the batch job by running:
 ```
-git remote add template git@github.com:herbps10/simulation_study_template.git
-git fetch template
-```
-
-Add subdirectory:
-```
-git subtree add --prefix=simulation_study_1 template main --squash
-```
-
-Pulling updates:
-```
-git fetch template
-git subtree pull --prefix=simulation_study_1 template main --squash
-```
-
-Pushing updates:
-```
-git subtree push --prefix=template template main
+./sim start
 ```

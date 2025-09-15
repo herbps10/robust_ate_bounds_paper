@@ -15,9 +15,15 @@ export SIMULATION_RESULTS_PATH="/gpfs/home/susmah01/robust_ate_bounds_paper/simu
 # Slurm job configuration
 
 export JOB_NAME="atebounds" 
+
 export PARTITION=cpu_short # SLURM partition
+
 export MAIL_USER=herbert.susmann@nyulangone.org
+
 export CPUS_PER_TASK=1 # CPU to assign to each task in the array
+
 export MEM_PER_CPU=2GB # Memory assigned per CPU
+
 export TIME=12:00:00 # Job time limit
+
 export ARRAY=1-100 # Array indexes to run
