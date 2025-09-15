@@ -33,4 +33,20 @@ To rerun the simulation study, start the batch job by running:
 ./sim start
 ```
 
-To generate the tables from the manuscript, without rerunning the full analysis and using the saved simulation results included in the repository, simply run the script `analyze.R` and use the functions `make_coverage_table` and `make_width_table`.
+To generate the tables from the manuscript, without rerunning the full analysis and using the saved simulation results included in the repository, simply run the script `analyze.R` and use the functions `make_coverage_table` and `make_width_table`:
+
+```
+# Table 1
+make_width_table(target_alpha = 5, target_pscore_threshold = 0.01)
+make_width_table(target_alpha = 5, target_pscore_threshold = Inf)
+
+# Table 2
+make_coverage_table(target_alpha = 5, target_pscore_threshold = 0.01)
+make_coverage_table(target_alpha = 5, target_pscore_threshold = Inf)
+
+# Appendix Table 3
+make_width_table(target_alpha = 1, target_pscore_threshold = Inf)
+
+# Appendix Table 4
+make_coverage_table(target_alpha = 1, target_pscore_threshold = Inf)
+```
