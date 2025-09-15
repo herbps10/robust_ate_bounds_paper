@@ -32,3 +32,5 @@ To rerun the simulation study, start the batch job by running:
 ```
 ./sim start
 ```
+
+To generate the tables from the manuscript, without rerunning the full analysis and using the saved simulation results included in the repository, simply run the script `analyze.R` and use the functions `make_coverage_table` and `make_width_table`.
