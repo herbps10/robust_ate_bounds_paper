@@ -8,4 +8,4 @@ The simulation study materials, including instructions for replicating the simul
 
 Materials for the example data application are in the `R` script `application/rhc.R`. 
 
-The statistical estimators proposed in the manuscript are implemented in the companion `R` package [`effectbounds`](github.com/herbps10/effectbounds). The version of `effectbounds` used in the manuscript is included in this repository as `effectbounds_1.0.0.tar.tz`.
+The statistical estimators proposed in the manuscript are implemented in the companion `R` package [`effectbounds`](https://github.com/herbps10/effectbounds). The version of `effectbounds` used in the manuscript is included in this repository as `effectbounds_1.0.0.tar.tz`.
