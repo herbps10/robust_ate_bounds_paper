@@ -14,7 +14,7 @@ results_path <- Sys.getenv("SIMULATION_RESULTS_PATH")
 if(cache_path == "") stop("Please set SIMULATION_CACHE_PATH environment variable.")
 if(results_path == "") stop("Please set SIMULATION_RESULTS_PATH environment variable.")
 
-files <- Sys.glob(glue::glue("{cache_path}/*/*.rds"))
+files <- Sys.glob(glue::glue("{cache_path}/*.rds"))
 
 if(length(files) == 0) {
   cat("Warning: no cached simulation results found.\n\n")

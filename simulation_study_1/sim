@@ -24,6 +24,7 @@ SCRIPT_DIR="$(cd "$(dirname "{BASH_SOURCE[0]}")" && pwd)"
 case "$1" in
   start)
     job_output=$(sbatch \
+       --array=$ARRAY \
        --job-name=$JOB_NAME \
        --mail-user=$MAIL_USER \
        --cpus-per-task=$CPUS_PER_TASK \
@@ -32,7 +33,6 @@ case "$1" in
        --time=$TIME \
        --output=$SIMULATION_LOG_PATH/%j.log \
        --error=$SIMULATION_LOG_PATH/%j.err \
-       --array=$ARRAY \
        "$SCRIPT_DIR/batch.sh")
 
     job_id=$(echo "$job_output" | awk '{print $4}')
