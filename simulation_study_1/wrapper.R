@@ -13,7 +13,7 @@ wrapper <- function(index, N, alpha, beta, effect_size, pscore_threshold, data, 
 
   print(glue::glue("Starting: {index} {N} {alpha} {beta} {effect_size} {pscore_threshold}"))
 
-  smoothness <- c(0.0001, 0.001, 0.01, 0.1)
+  smoothness <- c(0.001, 0.01, 0.1)
 
   # Run statistical analysis
   thresholds <- c(10^seq(-4, log10(0.05), 0.05))
@@ -24,6 +24,7 @@ wrapper <- function(index, N, alpha, beta, effect_size, pscore_threshold, data, 
     bootstrap_draws = 1e3, 
   )
 
+  critical_value <- fit$uniform_critical_value
   true_ate <- calculate_ate(effect_size)
   max_pscore <- max(c(1 / fit$nuisance$pi_hat[data$A == 1], 1 / (1 - fit$nuisance$pi_hat[data$A == 0])))
 
@@ -51,6 +52,7 @@ wrapper <- function(index, N, alpha, beta, effect_size, pscore_threshold, data, 
       max_pscore = max_pscore,
       test = test,
       uniform_test = uniform_test,
+      critical_value = critical_value,
 
       # One-step 
       lower_onestep = fit$onestep$lower,

@@ -27,6 +27,7 @@ results_summarized <- results_summarized |> left_join(
   simulations |> 
     group_by(N, alpha, effect_size, smoothness, pscore_threshold) |>
     summarize(
+      mean_critical_value = mean(critical_value),
       onestep_coverage   = mean(lower_onestep <= true_ate & upper_onestep >= true_ate),
       uniform_coverage   = mean(lower_uniform <= true_ate & upper_uniform >= true_ate),
       uniform_power = mean(uniform_test == TRUE),
