@@ -1,4 +1,4 @@
-# Simulation Study Template
+# Simulation Study
 This folder contains the simulation study replication materials. The simulation code is designed to be run on a SLURM parallel computing cluster.  The structure of the simulation study code is based on [this template](https://github.com/herbps10/simulation_study_template).
 
 The results reported in the paper are saved as `results/simulation_results.rds`.
@@ -33,4 +33,20 @@ To rerun the simulation study, start the batch job by running:
 ./sim start
 ```
 
-To generate the tables from the manuscript, without rerunning the full analysis and using the saved simulation results included in the repository, simply run the script `analyze.R` and use the functions `make_coverage_table` and `make_width_table`.
+To generate the tables from the manuscript, without rerunning the full analysis and using the saved simulation results included in the repository, simply run the script `analyze.R` and use the functions `make_coverage_table` and `make_width_table`:
+
+```
+# Table 1
+make_width_table(target_alpha = 5, target_pscore_threshold = 0.01)
+make_width_table(target_alpha = 5, target_pscore_threshold = Inf)
+
+# Table 2
+make_coverage_table(target_alpha = 5, target_pscore_threshold = 0.01)
+make_coverage_table(target_alpha = 5, target_pscore_threshold = Inf)
+
+# Appendix Table 3
+make_width_table(target_alpha = 1, target_pscore_threshold = Inf)
+
+# Appendix Table 4
+make_coverage_table(target_alpha = 1, target_pscore_threshold = Inf)
+```
