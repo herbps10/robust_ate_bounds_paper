@@ -14,7 +14,7 @@ export SIMULATION_RESULTS_PATH="/gpfs/home/susmah01/robust_ate_bounds_paper/simu
 
 # Slurm job configuration
 
-export JOB_NAME="atebounds" 
+export JOB_NAME="bounds" 
 
 export PARTITION=cpu_short # SLURM partition
 

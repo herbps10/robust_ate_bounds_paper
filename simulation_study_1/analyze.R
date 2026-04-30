@@ -10,7 +10,8 @@ results_path <- Sys.getenv("SIMULATION_RESULTS_PATH")
 if(results_path == "") stop("Please set SIMULATION_RESULTS_PATH environment variable.")
 
 simulations <- read_rds(glue::glue("{results_path}/simulation_results.rds")) |>
-  filter(index > 1)
+  filter(index > 1) |>
+  mutate(uniform_test = ifelse(is.na(uniform_test), lower_uniform > 0 | upper_uniform < 0, uniform_test))
 
 q90 <- \(x) quantile(x, 0.90)
 

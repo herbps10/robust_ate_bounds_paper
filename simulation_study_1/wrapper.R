@@ -15,6 +15,7 @@ wrapper <- function(index, N, alpha, beta, effect_size, pscore_threshold, data, 
 
   smoothness <- c(0.001, 0.01, 0.1)
 
+  set.seed(10016)
   # Run statistical analysis
   thresholds <- c(10^seq(-4, log10(0.05), 0.05))
   fit <- ate_bounds(
