@@ -350,9 +350,9 @@ pdf(
 )
 gridExtra::grid.arrange(
   results$results[[3]]$plot_pscore_distribution +
-    ggtitle("Estimated Propensity Score Distribution"),
+    ggtitle("(A) Estimated Propensity Score Distribution"),
   results$results[[3]]$plot_nonoverlap_size +
-    ggtitle("Non-overlap subpopulation size"),
+    ggtitle("(B) Non-overlap subpopulation size"),
   ncol = 2
 )
 dev.off()
